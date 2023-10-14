@@ -37,7 +37,7 @@ if let symbolIndex = arguments.firstIndex(of: "-s"), symbolIndex + 1 < arguments
     } else {
         print("\(orangeColor)Warning: Failed to load symbol names from the text file. Skipping to the next symbol.\(resetColor)")
     }
-    
+
     for symbolName in symbolNames {
         extractSymbol(symbolName)
     }
@@ -45,26 +45,30 @@ if let symbolIndex = arguments.firstIndex(of: "-s"), symbolIndex + 1 < arguments
 
 func extractSymbol(_ symbolName: String) {
     if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "") {
-        guard let tiffData = image.tiffRepresentation, !tiffData.isEmpty else {
-            print("\(redColor)Error: Failed to extract the SF Symbol tiff representation for symbol: \(symbolName)\(resetColor)")
-            return
-        }
-
         let targetSize = NSSize(width: 200, height: 200)
-
-        let resizedImage = NSImage(size: targetSize)
+        
+        let imageSize = image.size
+        var newSize = targetSize
+        
+        if imageSize.width > imageSize.height {
+            newSize.height = (targetSize.width / imageSize.width) * imageSize.height
+        } else {
+            newSize.width = (targetSize.height / imageSize.height) * imageSize.width
+        }
+        
+        let resizedImage = NSImage(size: newSize)
         resizedImage.lockFocus()
         NSGraphicsContext.current?.imageInterpolation = .high
-        image.draw(in: NSRect(x: 0, y: 0, width: targetSize.width, height: targetSize.height))
+        image.draw(in: NSRect(x: 0, y: 0, width: newSize.width, height: newSize.height))
         resizedImage.unlockFocus()
-
+        
         let outputDirectoryURL = URL(fileURLWithPath: "bin")
         let outputFileURL = outputDirectoryURL.appendingPathComponent("\(symbolName).png")
-
+        
         if let pngData = resizedImage.tiffRepresentation {
             do {
                 try pngData.write(to: outputFileURL)
-                print("\(greenColor)Success: SF Symbol extracted and saved as bin/\(symbolName).png (200x200)\(resetColor)")
+                print("\(greenColor)Success: SF Symbol extracted and saved as bin/\(symbolName).png (\(newSize.width)x\(newSize.height))\(resetColor)")
             } catch {
                 print("\(redColor)Error: Failed to write PNG data to file for symbol: \(symbolName) - \(error)\(resetColor)")
             }
